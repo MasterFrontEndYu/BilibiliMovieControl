@@ -17,7 +17,7 @@
         "change": "bun changeset",
         "version": "bun changeset version",
         "status": "bun changeset status",
-        "release": "bun run build:all && bun run zip:all && bun run submit:firefox && bun run submit:edge",
+        "release": "bun run build:all && bun run zip:all && bun run submit:edge",
         "build:all": "wxt build -b firefox && wxt build -b edge",
         "zip:all": "wxt zip -b firefox && wxt zip -b edge",
         "submit:firefox": "wxt submit --firefox-zip .output/*firefox*.zip",
