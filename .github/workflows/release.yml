@@ -4,12 +4,21 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    # 只有当 commit 信息包含 "Version Packages" 或者由你本地 changeset version 产生变动时运行
+    # 或者简单点：每次 push 检查，由 changesets 插件内部判断是否需要 publish
     steps:
-      - uses: actions/checkout@v4
-      
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
@@ -18,37 +27,34 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Create Release PR or Publish
+      - name: Publish to Stores
         id: changesets
         uses: changesets/action@v1
         with:
-          # 执行自定义的发布脚本
+          # 【关键】因为你在本地已经跑过 version 了，这里不需要 version 参数
+          # 插件会自动检测：如果没有 .changeset 目录且版本号升了，就会运行 publish
           publish: bun run release
-          version: bun run version
-          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Firefox 凭证
           FIREFOX_EXTENSION_ID: ${{ secrets.AMO_EXTENSION_ID }}
           FIREFOX_JWT_ISSUER: ${{ secrets.AMO_SIGNING_KEY }}
           FIREFOX_JWT_SECRET: ${{ secrets.AMO_SIGNING_SECRET }}
-          # Edge 凭证
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_CLIENT_SECRET }} 
           EDGE_TENANT_ID: ${{ secrets.EDGE_ACCESS_TOKEN_URL }}
 
-
-      - name: Upload to GitHub Release
-        # 只有当 Changesets 真的执行了 publish（即版本更新了）才运行
+      # 只有当上述 publish 成功执行后，才创建 GitHub Release 并挂载 ZIP
+      - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          # 指定要挂载到 GitHub Release 页面供人下载的文件
           files: |
             .output/*firefox*.zip
             .output/*edge*.zip
-          # 使用 Changesets 自动生成的 Tag 名字
+          # 使用 package.json 里的新版本号作为 Tag
           tag_name: v${{ steps.changesets.outputs.version }}
+          # 自动从 CHANGELOG.md 提取本次更新内容
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

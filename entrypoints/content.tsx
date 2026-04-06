@@ -6,110 +6,128 @@ export default defineContentScript({
   cssInjectionMode: 'manual',
 
   async main(ctx) {
-    const [config, setConfig] = createSignal({ start: 0, end: 0, active: false });
+    // 状态定义：存储三个核心时间点（单位：秒）
+    const [config, setConfig] = createSignal({
+      skipStart: 0, // 跳过区间的起点
+      skipEnd: 0,   // 跳过区间的终点（正文起点）
+      jumpEnd: 0,   // 提前切集的时间点
+      active: false
+    });
     const [isCollectionPage, setIsCollectionPage] = createSignal(false);
 
     let lastUrl = location.href;
-    let hasJumped = false;
-    let disposeUI: (() => void) | null = null; // 存储 Solid 的销毁函数
+    let disposeUI: (() => void) | null = null;
 
-    // --- 1. 配置处理逻辑 ---
+    // --- 1. 统一配置处理函数 ---
     const updateConfig = (data: any) => {
-      // 兼容两种数据格式（Storage 直接读取 or Message 传递）
-      const s = data.start ?? (Number(data.sH || 0) * 3600 + Number(data.sM || 0) * 60 + Number(data.sS || 0));
-      const e = data.end ?? (Number(data.eH || 0) * 3600 + Number(data.eM || 0) * 60 + Number(data.eS || 0));
-      setConfig({ start: s, end: e, active: !!data.isActive });
+      // 兼容两种格式：一种是直接从 Storage 取出的 H/M/S 对象，一种是 Message 传来的秒数
+      const s = data.skipStart ?? (Number(data.sH || 0) * 3600 + Number(data.sM || 0) * 60 + Number(data.sS || 0));
+      const m = data.skipEnd ?? (Number(data.mH || 0) * 3600 + Number(data.mM || 0) * 60 + Number(data.mS || 0));
+      const e = data.jumpEnd ?? (Number(data.eH || 0) * 3600 + Number(data.eM || 0) * 60 + Number(data.eS || 0));
+
+      setConfig({
+        skipStart: s,
+        skipEnd: m,
+        jumpEnd: e,
+        active: !!data.isActive
+      });
     };
 
-    // 初始加载
-    const initialRes = await browser.storage.local.get(['sH', 'sM', 'sS', 'eH', 'eM', 'eS', 'isActive']);
-    updateConfig(initialRes);
+    // 初始加载存储的数据
+    const res = await browser.storage.local.get(['sH', 'sM', 'sS', 'mH', 'mM', 'mS', 'eH', 'eM', 'eS', 'isActive']);
+    updateConfig(res);
 
-    // --- 2. 挂载/卸载逻辑 ---
+    // --- 2. UI 挂载逻辑 (显示在 B 站标题栏) ---
     const mountUI = () => {
-      // 第一步：清理已存在的同名标签，防止重复
       const existing = document.getElementById('bili-skip-wrapper-unique');
       if (existing) {
-        disposeUI?.(); // 销毁 Solid 响应式追踪
-        existing.remove(); // 从 DOM 删除
+        disposeUI?.();
+        existing.remove();
       }
 
-      const anchor = document.getElementById('viewbox_report');
+      const anchor = document.getElementById('viewbox_report') || document.querySelector('.video-info-title');
       if (!anchor) return;
 
-      // 第二步：创建新的挂载容器
       const mountPoint = document.createElement('span');
       mountPoint.id = 'bili-skip-wrapper-unique';
       anchor.appendChild(mountPoint);
 
-      // 第三步：渲染并保存销毁函数
+      const format = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
       disposeUI = render(() => (
         <Show when={config().active && isCollectionPage()}>
           <div style={{
             display: 'inline-flex',
             "align-items": 'center',
-            gap: '8px',
+            gap: '6px',
             padding: '2px 8px',
+            margin: '0 10px',
             background: '#fb7299',
             color: 'white',
             "border-radius": '4px',
-            "font-size": '12px',
-            "vertical-align": 'middle'
+            "font-size": '11px',
+            "vertical-align": 'middle',
+            "font-weight": 'normal'
           }}>
-            <span>▶ 起点: {Math.floor(config().start / 60)}:{(config().start % 60).toString().padStart(2, '0')}</span>
-            <span>⏭ 终点: {Math.floor(config().end / 60)}:{(config().end % 60).toString().padStart(2, '0')}</span>
+            <span>⏭ 跳过: {format(config().skipStart)}-{format(config().skipEnd)}</span>
+            <span style={{ opacity: 0.5 }}>|</span>
+            <span>🏁 切集: {format(config().jumpEnd)}</span>
           </div>
         </Show>
       ), mountPoint);
     };
 
-    // --- 3. 监控循环 ---
+    // --- 3. 核心监控逻辑 ---
     const monitor = () => {
-      // URL 变化检测
+      // 检测 URL 变化
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        hasJumped = false;
-        setTimeout(mountUI, 1500); // 延迟挂载确保 B 站标题栏已渲染
+        setTimeout(mountUI, 1500);
       }
 
-      // 动态检查：如果标签被 B 站刷掉了，重新挂载
+      // 自动挂载检测
       if (!document.getElementById('bili-skip-wrapper-unique')) {
         mountUI();
       }
 
-      const isCol = !!(document.querySelector('.video-pod') || document.querySelector('.cur-list') || document.querySelector('.multi-page'));
+      // 检查是否为合集/连播页面
+      const isCol = !!(document.querySelector('.video-pod') || document.querySelector('.cur-list') || document.querySelector('.multi-page') || document.querySelector('.sections-content'));
       setIsCollectionPage(isCol);
 
       const video = (document.querySelector('video') || document.querySelector('bwp-video')) as HTMLVideoElement | null;
       if (!video || !config().active || !isCol) return;
 
-      // 自动跳转
-      if (!hasJumped && config().start > 0 && video.currentTime < config().start - 1) {
-        video.currentTime = config().start;
-        hasJumped = true;
+      const cur = video.currentTime;
+
+      // 【功能 A】跳过区间：如果当前时间在 [skipStart, skipEnd] 之间，直接飞到正文
+      // 即使不设 skipStart，它默认为 0，也能实现“从头开始跳”
+      if (config().skipEnd > 0 && cur >= config().skipStart && cur < config().skipEnd) {
+        video.currentTime = config().skipEnd;
+        console.log(`[连播助手] 已跳过区间: ${config().skipStart}s -> ${config().skipEnd}s`);
       }
 
-      // 自动切集
-      if (config().end > 0 && video.currentTime >= config().end) {
+      // 【功能 B】自动切集：如果设置了切集点且当前时间已到
+      if (config().jumpEnd > 0 && cur >= config().jumpEnd) {
         const nextBtn = document.querySelector('.bpx-player-ctrl-next') as HTMLElement;
         if (nextBtn) {
           nextBtn.click();
-          hasJumped = false;
+          console.log(`[连播助手] 已触发切集，当前时间: ${cur}s`);
         }
       }
     };
 
+    // 每秒检查一次状态，比监听 timeupdate 性能消耗更小且更稳定
     const timer = setInterval(monitor, 1000);
 
     // --- 4. 消息监听 ---
     browser.runtime.onMessage.addListener((msg) => {
       if (msg.type === 'UPDATE_CONFIG') {
         updateConfig(msg);
-        hasJumped = false;
-        mountUI(); // 配置更新后强制刷新一次 UI
+        mountUI();
       }
     });
 
+    // 清理逻辑
     ctx.onInvalidated(() => {
       clearInterval(timer);
       disposeUI?.();
