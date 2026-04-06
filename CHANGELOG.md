@@ -4,6 +4,12 @@
 
 ### Patch Changes
 
+- fix:function
+
+## 1.0.4
+
+### Patch Changes
+
 - fix fuction
 
 ## 1.0.3

@@ -2,7 +2,7 @@
     "name": "B站连播助手 (Bilibili Movie Control)",
     "description": "基于 SolidJS 开发的 Bilibili 视频跳转工具",
     "private": true,
-    "version": "1.0.3",
+    "version": "1.0.4",
     "type": "module",
     "scripts": {
         "dev": "wxt",
