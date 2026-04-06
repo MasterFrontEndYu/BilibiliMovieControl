@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web';
 import { createSignal, Show } from 'solid-js';
+import { browser } from 'wxt/browser'
 
 export default defineContentScript({
   matches: ['*://*.bilibili.com/video/*', '*://*.bilibili.com/bangumi/play/*'],
@@ -30,7 +31,7 @@ export default defineContentScript({
 
     // 初始化
     const res = await browser.storage.local.get(['sH', 'sM', 'sS', 'mH', 'mM', 'mS', 'eH', 'eM', 'eS', 'isActive']);
-    
+
     updateConfig(res);
 
     const mountUI = () => {
@@ -43,7 +44,15 @@ export default defineContentScript({
       mountPoint.id = 'bili-skip-wrapper-unique';
       anchor.appendChild(mountPoint);
 
-      const format = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+      const format = (s: number) => {
+        const hours = Math.floor(s / 3600);
+        const minutes = Math.floor((s % 3600) / 60);
+        const seconds = s % 60;
+        if (hours > 0) {
+          return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      };
 
       disposeUI = render(() => (
         <Show when={config().active && isCollectionPage()}>
@@ -58,6 +67,8 @@ export default defineContentScript({
 
 
     let lastJumpTime = 0;
+    let lastIsCol = false;
+
     const monitor = () => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
@@ -67,7 +78,11 @@ export default defineContentScript({
 
       // --- 核心判定：只认 video-pod ---
       const isCol = !!document.querySelector('.video-pod');
-      setIsCollectionPage(isCol);
+      if (isCol !== lastIsCol) {
+        lastIsCol = isCol;
+        setIsCollectionPage(isCol);
+        mountUI(); // 只在合集状态变化时重建 UI
+      }
 
       const video = (document.querySelector('video') || document.querySelector('bwp-video')) as HTMLVideoElement | null;
       if (!video || !config().active || !isCol) return;

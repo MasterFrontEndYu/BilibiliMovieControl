@@ -1,5 +1,5 @@
 import { createSignal, onMount, For } from "solid-js";
-
+import { browser } from 'wxt/browser'
 interface VideoConfig {
   sH: number; sM: number; sS: number;
   mH: number; mM: number; mS: number;
@@ -39,7 +39,7 @@ function App() {
           return document.querySelector(".video-title")?.textContent?.trim() || "未知合集";
         },
       });
-      return results[0].result;
+      return results[0]?.result || null;
     } catch (e) { return null; }
   };
 
@@ -67,7 +67,7 @@ function App() {
         setIsPageReady(true);
         const newItem: HistoryItem = {
           title: formatTitle(colTitle, activeTab.title || ""),
-          url: activeTab.url,
+          url: activeTab.url || "",
           time: Date.now(),
           config: {
             sH: Number(sH() || 0), sM: Number(sM() || 0), sS: Number(sS() || 0),
@@ -128,11 +128,20 @@ function App() {
     }
   };
 
-  const loadHistory = (item: HistoryItem) => {
+  const loadHistory = async (item: HistoryItem) => {
+    // 保存配置到storage
+    await browser.storage.local.set({
+      sH: item.config.sH, sM: item.config.sM, sS: item.config.sS,
+      mH: item.config.mH, mM: item.config.mM, mS: item.config.mS,
+      eH: item.config.eH, eM: item.config.eM, eS: item.config.eS,
+      isActive: true
+    });
+    // 更新UI信号（可选，为了让popup显示新配置）
     setSH(item.config.sH); setSM(item.config.sM); setSS(item.config.sS);
     setMH(item.config.mH); setMM(item.config.mM); setMS(item.config.mS);
     setEH(item.config.eH); setEM(item.config.eM); setES(item.config.eS);
-    browser.tabs.update({ url: item.url });
+    // 跳转到该URL
+    await browser.tabs.update({ url: item.url });
   };
 
   const inputStyle = { width: "45px", padding: "4px", border: "1px solid #ddd", "border-radius": "4px", "text-align": "center" as const };
