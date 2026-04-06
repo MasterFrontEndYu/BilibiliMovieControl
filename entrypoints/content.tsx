@@ -59,9 +59,8 @@ export default defineContentScript({
           <div style={{
             display: 'inline-flex',
             "align-items": 'center',
-            gap: '6px',
+            gap: '12px',
             padding: '2px 8px',
-            margin: '0 10px',
             background: '#fb7299',
             color: 'white',
             "border-radius": '4px',
@@ -69,7 +68,7 @@ export default defineContentScript({
             "vertical-align": 'middle',
             "font-weight": 'normal'
           }}>
-            <span>⏭ 跳过: {format(config().skipStart)}-{format(config().skipEnd)}</span>
+            <span>⏭ 跳过: {format(config().skipStart)}<b>&nbsp;-&nbsp;</b>{format(config().skipEnd)}</span>
             <span style={{ opacity: 0.5 }}>|</span>
             <span>🏁 切集: {format(config().jumpEnd)}</span>
           </div>
