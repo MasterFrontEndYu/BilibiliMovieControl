@@ -74,8 +74,8 @@ export default defineContentScript({
         <Show when={config().active && isCollectionPage()}>
           <div style={{ display: 'inline-flex', "align-items": 'center', gap: '12px', padding: '2px 8px', background: '#fb7299', color: 'white', "border-radius": '4px', "font-size": '11px', "vertical-align": 'middle' }}>
             <span>⏭ 跳过: {format(config().skipStart)}-{format(config().skipEnd)}</span>
-            <span style={{ opacity: 0.5 }}>|</span>
-            <span>🏁 切集: {format(config().jumpEnd)}</span>
+            <span style={{ opacity: 0.8 }}>|</span>
+            <span>🏁 切集:  {mode() === 'manual' ? format(config().jumpEnd) : '自动切集'} </span>
           </div>
         </Show>
       ), mountPoint);

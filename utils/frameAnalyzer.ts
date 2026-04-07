@@ -2,13 +2,21 @@
 
 let frameCanvas: HTMLCanvasElement;
 let frameCtx: CanvasRenderingContext2D | null;
-let previousImageData: ImageData | null = null;
+let previousImageData: Uint8ClampedArray | null = null;
 let blackFrameCount = 0;
 let staticFrameCount = 0;
 
+// 关键优化：固定采样尺寸，无论原片是 4K 还是 1080P，我们只分析 100x100
+const SAMPLE_W = 100;
+const SAMPLE_H = 100;
+
 export function initFrameAnalyzer() {
+    if (frameCanvas) return;
     frameCanvas = document.createElement('canvas');
-    frameCtx = frameCanvas.getContext('2d');
+    frameCanvas.width = SAMPLE_W;
+    frameCanvas.height = SAMPLE_H;
+    // willReadFrequently 优化 getImageData 性能
+    frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
     resetFrameAnalyzer();
 }
 
@@ -19,87 +27,85 @@ export function getMainVideo(): HTMLVideoElement | null {
 }
 
 /**
- * 检测当前帧是否为黑屏（仅当视频在播放时有效）
+ * 检测黑屏：计算 100x100 采样区的平均亮度
  */
 export function isBlackScreen(video: HTMLVideoElement, threshold = 30): boolean {
-    if (!frameCtx || video.videoWidth === 0) return false;
-    frameCanvas.width = video.videoWidth;
-    frameCanvas.height = video.videoHeight;
-    frameCtx.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
-    const imageData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height);
-    const data = imageData.data;
+    if (!frameCtx || video.readyState < 2) return false;
+
+    // 将视频压缩绘制到 100x100 区域
+    frameCtx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
+    const data = frameCtx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+
     let totalLuminance = 0;
-    const pixelCount = frameCanvas.width * frameCanvas.height;
-    for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-        totalLuminance += luminance;
+    // 步进采样：每 4 个像素采样一次 (i += 16) 进一步节省 CPU
+    for (let i = 0; i < data.length; i += 16) {
+        totalLuminance += (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]);
     }
-    const avgLuminance = totalLuminance / pixelCount;
+
+    const avgLuminance = totalLuminance / (data.length / 16);
     return avgLuminance < threshold;
 }
 
 /**
- * 检测当前帧是否与上一帧高度相似（静态画面）
+ * 检测静态帧：对比前后两帧 100x100 采样区的差异
  */
 export function isStaticFrame(video: HTMLVideoElement, diffThreshold = 0.05): boolean {
-    if (!frameCtx || video.videoWidth === 0) return false;
-    frameCanvas.width = video.videoWidth;
-    frameCanvas.height = video.videoHeight;
-    frameCtx.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
-    const currentImageData = frameCtx.getImageData(0, 0, frameCanvas.width, frameCanvas.height);
+    if (!frameCtx || video.readyState < 2) return false;
+
+    frameCtx.drawImage(video, 0, 0, SAMPLE_W, SAMPLE_H);
+    const currentData = frameCtx.getImageData(0, 0, SAMPLE_W, SAMPLE_H).data;
+
     if (!previousImageData) {
-        previousImageData = currentImageData;
+        previousImageData = new Uint8ClampedArray(currentData);
         return false;
     }
+
     let diffPixels = 0;
-    const totalPixels = frameCanvas.width * frameCanvas.height;
-    const prevData = previousImageData.data;
-    const currData = currentImageData.data;
-    for (let i = 0; i < prevData.length; i += 4) {
-        if (Math.abs(prevData[i] - currData[i]) > 10 ||
-            Math.abs(prevData[i + 1] - currData[i + 1]) > 10 ||
-            Math.abs(prevData[i + 2] - currData[i + 2]) > 10) {
+    // 每 4 个像素对比一次
+    for (let i = 0; i < currentData.length; i += 16) {
+        // 只要 R 通道差异超过 15 就视为像素变动
+        if (Math.abs(currentData[i] - previousImageData[i]) > 15) {
             diffPixels++;
         }
     }
-    previousImageData = currentImageData;
-    const diffRatio = diffPixels / totalPixels;
+
+    previousImageData.set(currentData);
+    const diffRatio = diffPixels / (SAMPLE_W * SAMPLE_H / 4);
     return diffRatio < diffThreshold;
 }
 
 /**
- * 综合判定是否到达片尾（连续黑屏 或 连续静态帧）
- * @param video 视频元素
- * @param isPlaying 视频是否正在播放（必须为 true 才进行检测）
+ * 综合判定
  */
 export function checkEndingByFrame(video: HTMLVideoElement, isPlaying: boolean): boolean {
-    // 关键修复：如果视频不在播放状态，直接返回 false，并重置计数器
-    if (!isPlaying) {
+    // 基础守卫：只有视频接近末尾（最后 10%）且正在播放且数据就绪时才分析
+    const isNearEnd = video.currentTime / video.duration > 0.85;
+    if (!isPlaying || !isNearEnd || video.readyState < 3) {
         resetFrameAnalyzer();
         return false;
     }
 
     const black = isBlackScreen(video);
     const stat = isStaticFrame(video);
-    const BLACK_NEED = 3;    // 连续3帧黑屏
-    const STATIC_NEED = 10;  // 连续10帧静态
+
+    // 判定阈值（基于 1s 执行一次的 monitor）
+    const BLACK_NEED = 3;    // 持续 3 秒黑屏
+    const STATIC_NEED = 8;   // 持续 8 秒画面不动（针对静止的演职员表）
 
     if (black) {
         blackFrameCount++;
-        staticFrameCount = 0;
+        staticFrameCount = 0; // 黑屏优先级高
     } else {
         blackFrameCount = 0;
-    }
-    if (stat) {
-        staticFrameCount++;
-    } else {
-        staticFrameCount = 0;
+        if (stat) {
+            staticFrameCount++;
+        } else {
+            staticFrameCount = 0;
+        }
     }
 
     if (blackFrameCount >= BLACK_NEED || staticFrameCount >= STATIC_NEED) {
+        console.log(`[BiliSkip] 触发自动切集: 黑屏(${blackFrameCount}) 静态(${staticFrameCount})`);
         resetFrameAnalyzer();
         return true;
     }
