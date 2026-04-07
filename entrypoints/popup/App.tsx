@@ -44,9 +44,28 @@ export default function App() {
     await initFromStorage();
     await loadMode();
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.id && tabs[0].url?.includes('bilibili.com/video')) {
-      const colTitle = await getBiliCollection(tabs[0].id);
-      if (colTitle) setIsPageReady(true);
+    const activeTab = tabs[0];
+    if (activeTab?.id && activeTab.url?.includes('bilibili.com/video')) {
+      const colTitle = await getBiliCollection(activeTab.id);
+      if (colTitle) {
+        setIsPageReady(true);
+        // 自动记录最近播放
+        const newItem = {
+          title: formatTitle(colTitle, activeTab.title || ''),
+          url: activeTab.url || '',
+          time: Date.now(),
+          config: {
+            sH: sH(), sM: sM(), sS: sS(),
+            mH: mH(), mM: mM(), mS: mS(),
+            eH: eH(), eM: eM(), eS: eS(),
+          },
+        };
+        const newLatest = [newItem, ...latestHistory().filter(h => h.url !== newItem.url)].slice(0, 2);
+
+        setLatestHistory(newLatest);
+
+        await browser.storage.local.set({ latestHistory: newLatest });
+      }
     }
   });
 
@@ -72,7 +91,6 @@ export default function App() {
     await browser.tabs.sendMessage(activeTab.id, { type: 'UPDATE_CONFIG', ...config });
     await browser.tabs.sendMessage(activeTab.id, { type: 'SET_MODE', mode: mode() });
 
-    // 震动/视觉反馈提示已应用（可选）
   };
 
   // --- 逻辑 B：仅保存到存档/历史列表 ---
@@ -95,16 +113,12 @@ export default function App() {
       },
     };
 
-    // 更新最近播放
-    const newLatest = [newItem, ...latestHistory().filter(h => h.url !== newItem.url)].slice(0, 2);
-    setLatestHistory(newLatest);
-
     // 更新手动存档 (Pinned)
     const newPinned = [newItem, ...pinnedHistory().filter(h => h.url !== newItem.url)].slice(0, 3);
+    
     setPinnedHistory(newPinned);
 
     await browser.storage.local.set({
-      latestHistory: newLatest,
       pinnedHistory: newPinned
     });
   };
