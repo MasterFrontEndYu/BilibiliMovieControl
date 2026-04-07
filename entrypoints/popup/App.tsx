@@ -35,12 +35,18 @@ function App() {
         target: { tabId },
         func: () => {
           const isPod = !!document.querySelector('.video-pod');
-          if (!isPod) return null;
-          return document.querySelector(".video-title")?.textContent?.trim() || "未知合集";
+          if (!isPod) return "";
+          const titleEl = document.querySelector(".video-title")?.textContent?.trim() || "未知合集";
+
+          if (titleEl!== "未知合集") {
+
+            return titleEl.replace(/(\[|【)?(电视剧|美剧)(\]|】)?/g, "");
+          }
+          return titleEl
         },
       });
-      return results[0]?.result || null;
-    } catch (e) { return null; }
+      return results[0]?.result;
+    } catch (e) { return ""; }
   };
 
   const formatTitle = (col: string, full: string) =>
