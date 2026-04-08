@@ -1,5 +1,11 @@
 # B 站连播助手 (Bilibili Movie Control)
 
+## 1.1.0
+
+### Minor Changes
+
+- change
+
 ## 1.0.5
 
 ### Patch Changes
