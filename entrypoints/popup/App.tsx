@@ -150,7 +150,7 @@ export default function App() {
         <button onClick={handleArchive} style={{ flex: 1, background: '#00aeec', color: 'white', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer', 'font-weight': 'bold' }}>存档</button>
       </div>
 
-      <HistoryList latest={latestHistory()} pinned={pinnedHistory()} onLoadHistory={loadHistory} />
+      <HistoryList latest={latestHistory().slice(0, 2)} pinned={pinnedHistory()} onLoadHistory={loadHistory} />
     </div>
   );
 }

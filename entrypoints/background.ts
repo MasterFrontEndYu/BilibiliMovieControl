@@ -45,7 +45,7 @@ export default defineBackground(() => {
           },
         };
 
-        const newLatest = [newItem, ...res.latestHistory.filter((h: any) => h.url !== newItem.url)].slice(0, 2);
+        const newLatest = [newItem, ...res.latestHistory.filter((h: any) => h.url !== newItem.url)].slice(0, 50);
         await browser.storage.local.set({ latestHistory: newLatest });
 
         // 通知所有 UI 刷新 (Popup 或 Options)
