@@ -17,6 +17,17 @@ export default function Home() {
     // 保存逻辑
     const saveSettings = async () => {
         await browser.storage.local.set({ frameThreshold: frameThreshold() });
+        const tabs = await browser.tabs.query({ url: '*://*.bilibili.com/*' });
+        tabs.forEach(tab => {
+            if (tab.id) {
+                browser.tabs.sendMessage( tab.id, {
+                    type: 'UPDATE_CONFIG',
+                    frameThreshold: frameThreshold()
+                }).catch(() => {
+                    // 忽略没有 Content Script 的页面报错
+                });
+            }
+        });
         setSaveStatus('success');
         // 2秒后恢复按钮状态
         setTimeout(() => setSaveStatus('idle'), 2000);
