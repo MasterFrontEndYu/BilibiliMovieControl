@@ -24,6 +24,8 @@
         "submit:edge": "wxt submit --edge-zip .output/*edge*.zip"
     },
     "dependencies": {
+        "@solidjs/router": "^0.16.1",
+        "lucide-solid": "^1.3.0",
         "solid-js": "^1.9.11"
     },
     "devDependencies": {

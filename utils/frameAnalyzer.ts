@@ -7,8 +7,8 @@ let blackFrameCount = 0;
 let staticFrameCount = 0;
 
 // 关键优化：固定采样尺寸，无论原片是 4K 还是 1080P，我们只分析 100x100
-const SAMPLE_W = 100;
-const SAMPLE_H = 100;
+const SAMPLE_W = 200;
+const SAMPLE_H = 200;
 
 export function initFrameAnalyzer() {
     if (frameCanvas) return;
@@ -77,9 +77,11 @@ export function isStaticFrame(video: HTMLVideoElement, diffThreshold = 0.05): bo
 /**
  * 综合判定
  */
-export function checkEndingByFrame(video: HTMLVideoElement, isPlaying: boolean): boolean {
+export function checkEndingByFrame(video: HTMLVideoElement, isPlaying: boolean,
+    customThreshold: number = 85): boolean {
     // 基础守卫：只有视频接近末尾（最后 10%）且正在播放且数据就绪时才分析
-    const isNearEnd = video.currentTime / video.duration > 0.85;
+    const thresholdRatio = customThreshold / 100;
+    const isNearEnd = video.currentTime / video.duration > thresholdRatio;
     if (!isPlaying || !isNearEnd || video.readyState < 3) {
         resetFrameAnalyzer();
         return false;

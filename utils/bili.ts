@@ -28,3 +28,9 @@ export const getBiliCollection = async (tabId: number): Promise<string> => {
  */
 export const formatTitle = (col: string, full: string): string =>
     `${col.slice(0, 10)}-${full.replace('_哔哩哔哩_bilibili', '').slice(0, 8)}`;
+
+
+/**
+ * 判断帧分析是否已经启动
+ */
+ 

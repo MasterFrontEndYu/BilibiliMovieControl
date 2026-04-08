@@ -9,6 +9,10 @@ export default defineConfig({
     }
   },
   manifest: {
+    options_ui: {
+      page: "entrypoints/options/index.html",
+      open_in_tab: true, 
+    },
     permissions: ['storage', 'tabs', 'activeTab', "scripting",],
     host_permissions: ['*://*.bilibili.com/*'],
   },
