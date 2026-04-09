@@ -5,7 +5,9 @@ import {
   initFrameAnalyzer,
   getMainVideo,
   checkEndingByFrame,
-  resetFrameAnalyzer
+  resetFrameAnalyzer,
+  updateAnalyzerConfig,
+  destroyFrameAnalyzer,
 } from '../utils/frameAnalyzer';
 
 export default defineContentScript({
@@ -36,7 +38,16 @@ export default defineContentScript({
       const e = data.jumpEnd ?? getSeconds(data.eH, data.eM, data.eS);
 
       setConfig({ skipStart: s, skipEnd: m, jumpEnd: e });
-      if (data.frameThreshold !== undefined) setThreshold(data.frameThreshold);
+
+      if (data.frameThreshold !== undefined) {
+        setThreshold(data.frameThreshold);
+        // 同步阈值到帧分析器
+        updateAnalyzerConfig({
+          endingPercentThreshold: data.frameThreshold,
+          // 为了保持旧版行为（只看进度百分比），禁用剩余时间限制
+          minRemainingSeconds: 999999,
+        });
+      }
     };
 
     // UI 挂载逻辑 (防抖并确保只存在一个实例)
@@ -69,7 +80,7 @@ export default defineContentScript({
           }}>
             <span>⏭ {format(config().skipStart)}-{format(config().skipEnd)}</span>
             <span style={{ opacity: 0.5 }}>|</span>
-            <span>🏁 {mode() === 'manual' ? `切集: ${format(config().jumpEnd) }` : `自动(${threshold()}%) ${isAnalyzing() ? '分析中...' : '待机'}`}</span>
+            <span>🏁 {mode() === 'manual' ? `切集: ${format(config().jumpEnd)}` : `自动(${threshold()}%) ${isAnalyzing() ? '分析中...' : '待机'}`}</span>
           </div>
         </Show>
       ), mountPoint);
@@ -122,6 +133,7 @@ export default defineContentScript({
         // 只有在接近末尾时才启动昂贵的 Canvas 帧分析
         if (progress >= threshold()) {
           setIsAnalyzing(true);
+          // 传入 customEndingPercent 以保持与 UI 显示的一致性
           if (checkEndingByFrame(video, !video.paused, threshold())) {
             executeJump();
             setIsAnalyzing(false);
@@ -140,14 +152,25 @@ export default defineContentScript({
     };
 
     // --- 3. 初始化与主循环 ---
-    initFrameAnalyzer();
 
     // 初始加载存储的数据
     const stored = await browser.storage.local.get([
       'sH', 'sM', 'sS', 'mH', 'mM', 'mS', 'eH', 'eM', 'eS',
       'mode', 'frameThreshold'
     ]);
+
+    const initialThreshold = (stored.frameThreshold as number) ?? 85;
     setMode(stored.mode === 'manual' ? 'manual' : 'auto');
+    setThreshold(initialThreshold);
+
+    // 初始化帧分析器，同步初始阈值，并禁用剩余时间限制以保持旧版行为
+    initFrameAnalyzer({
+      endingPercentThreshold: initialThreshold,
+      minRemainingSeconds: 999999,
+    });
+
+    // 补全 updateConfig 中未包含的初始配置（因为 updateConfig 会处理 frameThreshold 同步）
+    // 但 updateConfig 中也会调用 setThreshold，所以这里直接调用一次 updateConfig 即可
     updateConfig(stored);
 
     // 设置主定时器：处理 URL 变化、UI 补全和视频逻辑
@@ -175,6 +198,7 @@ export default defineContentScript({
       browser.runtime.onMessage.removeListener(handleMessage);
       disposeUI?.();
       document.getElementById('bili-skip-wrapper-unique')?.remove();
+      destroyFrameAnalyzer(); // 释放 Canvas 及双缓冲区内存
     });
   },
 });
