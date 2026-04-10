@@ -5,7 +5,7 @@ import { HistoryItem } from '../assets/types';
 
 
 const DEBOUNCE_TIME = 2000;
-const MAX_HISTORY_LENGTH = 50;
+const MAX_HISTORY_LENGTH = 20;
 const processedLogs = new Map<string, number>();
 
 /**

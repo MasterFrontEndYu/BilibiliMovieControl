@@ -77,7 +77,7 @@ export default function App() {
     });
 
     if (response?.pinnedHistory) {
-      setPinnedHistory(response.pinnedHistory);
+      setPinnedHistory(response.pinnedHistory.slice(0, 3));
     }
   };
 
