@@ -11,7 +11,7 @@ import {
 } from '../utils/frameAnalyzer';
 
 export default defineContentScript({
-  matches: ['*://*.bilibili.com/video/*', '*://*.bilibili.com/bangumi/play/*'],
+  matches: ['*://*.bilibili.com/video/*'],
   cssInjectionMode: 'manual',
 
   async main(ctx) {

@@ -34,8 +34,8 @@ export function useBiliConfig() {
         setEH(Number(res.eH) || 0); setEM(Number(res.eM) || 0); setES(Number(res.eS) || 0);
 
         // 填充历史记录列表
-        if (res.latestHistory) setLatestHistory(res.latestHistory as HistoryItem[]);
-        if (res.pinnedHistory) setPinnedHistory(res.pinnedHistory as HistoryItem[]);
+        if (Array.isArray(res.latestHistory)) setLatestHistory(res.latestHistory.slice(0, 2) as HistoryItem[]);
+        if (Array.isArray(res.pinnedHistory)) setPinnedHistory(res.pinnedHistory.slice(0, 3) as HistoryItem[]);
     };
 
     const resetConfig = async () => {

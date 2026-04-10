@@ -16,3 +16,4 @@ export interface HistoryItem {
     time: number;
     config: VideoConfig;
 }
+

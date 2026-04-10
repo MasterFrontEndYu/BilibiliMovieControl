@@ -17,7 +17,7 @@ export default defineBackground(() => {
         config: config
       };
 
-      const newPinned = [newItem, ...res.pinnedHistory.filter((h: any) => h.url !== newItem.url)].slice(0, 3);
+      const newPinned = [newItem, ...res.pinnedHistory.filter((h: any) => h.url !== newItem.url)].slice(0, 50);
       await browser.storage.local.set({ pinnedHistory: newPinned });
       return newPinned;
     }

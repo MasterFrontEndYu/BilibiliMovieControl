@@ -3,44 +3,45 @@ import { createSignal, onMount, For, Show } from 'solid-js';
 import { Trash2, ExternalLink, History as HistoryIcon, Info } from 'lucide-solid';
 import { browser } from 'wxt/browser';
 
+// 定义和 Background/Popup 一致的接口
 import type { HistoryItem } from '@/assets/types';
 
 export default function HistoryPage() {
-    const [historyList, setHistoryList] = createSignal<HistoryItem[]>([]);
+    const [pinnedHistory, setPinnedHistory] = createSignal<HistoryItem[]>([]);
 
     // 初始化加载
     onMount(async () => {
-        const res = await browser.storage.local.get({ latestHistory: [] });
-        setHistoryList(res.latestHistory as HistoryItem[]);
+        const res = await browser.storage.local.get({ pinnedHistory: [] });
+        setPinnedHistory(res.pinnedHistory as HistoryItem[]);
     });
 
     // 删除单条
     const deleteItem = async (url: string) => {
-        const updated = historyList().filter(item => item.url !== url);
-        setHistoryList(updated);
-        await browser.storage.local.set({ latestHistory: updated });
+        const updated = pinnedHistory().filter(item => item.url !== url);
+        setPinnedHistory(updated);
+        await browser.storage.local.set({ pinnedHistory: updated });
     };
 
     // 清空所有
     const clearAll = async () => {
-        if (confirm('确定要清空所有自动历史记录吗？')) {
-            setHistoryList([]);
-            await browser.storage.local.set({ latestHistory: [] });
+        if (confirm('确定要清空所有手动历史记录吗？')) {
+            setPinnedHistory([]);
+            await browser.storage.local.set({ pinnedHistory: [] });
         }
     };
 
     return (
         <div style={{ "max-width": "900px", margin: "0 auto" }}>
-            <header style={{display: "flex", "justify-content": "space-between", "align-items": "center", "margin-bottom": "40px" }}>
+            <header style={{ display: "flex", "justify-content": "space-between", "align-items": "center", "margin-bottom": "40px" }}>
                 <div>
                     <h1 style={{ "font-size": "32px", margin: "0 0 12px 0", color: "#fb7299", "display": "flex", "align-items": "center", gap: "12px" }}>
-                        <HistoryIcon size={36} /> 自动存档管理
+                        <HistoryIcon size={36} /> 手动存档管理
                     </h1>
                     <p style={{ color: "#61666d", "font-size": "16px", "line-height": "1.6" }}>
-                        系统会自动记录符合连播条件的视频配置，方便下次直接使用。
+                        系统会手动记录符合连播条件的视频配置，方便下次直接使用。
                     </p>
                 </div>
-                <Show when={historyList().length > 0}>
+                <Show when={pinnedHistory().length > 0}>
                     <button
                         onClick={clearAll}
                         style={{ padding: "8px 16px", background: "#fff", border: "1px solid #ff4d4f", color: "#ff4d4f", "border-radius": "6px", cursor: "pointer" }}
@@ -52,7 +53,7 @@ export default function HistoryPage() {
 
             {/* 列表容器 */}
             <div style={{ display: "flex", "flex-direction": "column", gap: "15px" }}>
-                <For each={historyList()}>
+                <For each={pinnedHistory()}>
                     {(item) => (
                         <div style={{
                             background: "#fff", padding: "20px", "border-radius": "12px",
@@ -96,13 +97,13 @@ export default function HistoryPage() {
                 </For>
 
                 {/* 空状态 */}
-                <Show when={historyList().length === 0}>
+                <Show when={pinnedHistory().length === 0}>
                     <div style={{
                         "text-align": "center", padding: "80px 0", background: "#fff",
                         "border-radius": "16px", border: "1px dashed #e3e5e7"
                     }}>
                         <div style={{ "font-size": "40px", "margin-bottom": "16px" }}>📄</div>
-                        <p style={{ color: "#9499a0", margin: "0" }}>暂无自动记录，快去观看合集视频吧</p>
+                        <p style={{ color: "#9499a0", margin: "0" }}>暂无手动记录，快去观看合集视频吧</p>
                     </div>
                 </Show>
             </div>
@@ -111,8 +112,10 @@ export default function HistoryPage() {
             <footer style={{ "margin-top": "30px", padding: "15px", background: "#eef3f7", "border-radius": "8px", display: "flex", gap: "10px" }}>
                 <Info size={18} color="#00aeec" style={{ "flex-shrink": 0 }} />
                 <p style={{ margin: "0", "font-size": "12px", color: "#61666d", "line-height": "1.5" }}>
-                    <b>关于自动存档：</b> 插件会在后台检测到视频为“合集/列表”且符合读帧条件时自动创建此记录。
+                    <b>关于手动存档：</b> 
+                    用户可以在视频播放过程中点击插件图标，选择“手动存档”来保存当前的跳过配置和视频信息，以便下次直接使用。
                     Options 页面会保留最近的 50 条记录。
+                    但popup页面指挥显示最新的 2 条记录
                 </p>
             </footer>
         </div>

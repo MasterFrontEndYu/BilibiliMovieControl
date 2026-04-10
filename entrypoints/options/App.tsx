@@ -1,6 +1,6 @@
 import { ParentProps } from 'solid-js';
 import { A } from '@solidjs/router';
-import { Settings, History } from 'lucide-solid';
+import { Settings, History, Info, HandGrab } from 'lucide-solid';
 
 export default function Layout(props: ParentProps) {
     return (
@@ -17,10 +17,13 @@ export default function Layout(props: ParentProps) {
                     <Settings size={18} /> 全局配置
                 </A>
                 <A href="/history" activeClass="active-link" style={navStyle}>
-                    <History size={18} /> 存档管理
+                    <History size={18} /> 自动存档
+                </A>
+                <A href="/manual" activeClass="active-link" style={navStyle}>
+                    <HandGrab size={18} /> 手动存档
                 </A>
                 <A href="/about" activeClass="active-link" style={navStyle}>
-                    <History size={18} /> 插件说明
+                    <Info size={18} /> 插件说明
                 </A>
             </nav>
 
