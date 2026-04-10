@@ -1,5 +1,5 @@
 // entrypoints/popup/App.tsx
-import { createSignal, onMount, Show, For } from 'solid-js';
+import { onMount, Show, For } from 'solid-js';
 import { useBiliConfig } from '@/hooks/useBiliConfig';
 import { TimeInput } from '@/components/TimeInput';
 import { HistoryList } from '@/components/HistoryList';
@@ -17,9 +17,8 @@ export default function App() {
     pinnedHistory,
     initFromStorage,
     saveMode,
-    handleApply,
+    applyConfig,
     handleArchive,
-    resetConfig,
     loadHistory,
     openOptions,
   } = useBiliConfig();
@@ -101,8 +100,8 @@ export default function App() {
       </div>
 
       <div style={{ display: 'flex', gap: '6px' }}>
-        <button onClick={handleApply} style={{ flex: 1, background: '#fb7299', color: 'white', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer', 'font-weight': 'bold' }}>应用</button>
-        <button onClick={resetConfig} style={{ flex: 1, background: '#e3e5e7', color: '#61666d', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer' }}>重置</button>
+        <button onClick={[applyConfig,"setting"]} style={{ flex: 1, background: '#fb7299', color: 'white', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer', 'font-weight': 'bold' }}>应用</button>
+        <button onClick={[applyConfig, "reset"]} style={{ flex: 1, background: '#e3e5e7', color: '#61666d', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer' }}>重置</button>
         <button onClick={handleArchive} style={{ flex: 1, background: '#00aeec', color: 'white', border: 'none', padding: '8px 4px', 'border-radius': '6px', cursor: 'pointer', 'font-weight': 'bold' }}>存档</button>
       </div>
 

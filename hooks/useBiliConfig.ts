@@ -1,7 +1,7 @@
 // hooks/useBiliConfig.ts
 import { createSignal } from 'solid-js';
 import { browser } from 'wxt/browser';
-import type { VideoConfig, HistoryItem } from '../assets/types';
+import type { HistoryItem } from '../assets/types';
 
 export function useBiliConfig() {
     // --- 1. 基础配置信号 (UI 绑定用) ---
@@ -24,8 +24,6 @@ export function useBiliConfig() {
     // --- 3. 列表信号 ---
     const [latestHistory, setLatestHistory] = createSignal<HistoryItem[]>([]);
     const [pinnedHistory, setPinnedHistory] = createSignal<HistoryItem[]>([]);
-
-
 
     const saveMode = async (newMode: 'auto' | 'manual') => {
         setMode(newMode);
@@ -52,9 +50,15 @@ export function useBiliConfig() {
         if (Array.isArray(res.pinnedHistory)) setPinnedHistory(res.pinnedHistory.slice(0, 3) as HistoryItem[]);
     };
 
-    const handleApply = async () => {
+    const applyConfig = async (type:string) => {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (!tabs[0]?.id) return;
+
+        if(type === "reset"){
+            setSH(0); setSM(0); setSS(0);
+            setMH(0); setMM(0); setMS(0);
+            setEH(0); setEM(0); setES(0);
+        }
 
         const configValues = { sH: sH(), sM: sM(), sS: sS(), mH: mH(), mM: mM(), mS: mS(), eH: eH(), eM: eM(), eS: eS() };
         await browser.storage.local.set(configValues);
@@ -62,24 +66,7 @@ export function useBiliConfig() {
         await browser.tabs.sendMessage(tabs[0].id, { type: 'UPDATE_CONFIG', ...configValues });
     };
 
-    const handleArchive = async () => {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tabs[0]?.id) return;
-
-        // 呼叫后台执行存档计算
-        const response = await browser.runtime.sendMessage({
-            type: 'DO_ARCHIVE',
-            data: {
-                tab: { id: tabs[0].id, title: tabs[0].title, url: tabs[0].url },
-                config: { sH: sH(), sM: sM(), sS: sS(), mH: mH(), mM: mM(), mS: mS(), eH: eH(), eM: eM(), eS: eS() }
-            }
-        });
-
-        if (response?.pinnedHistory) {
-            setPinnedHistory(response.pinnedHistory.slice(0, 3));
-        }
-    };
-
+   
     const resetConfig = async () => {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (!tabs[0]?.id) return;
@@ -92,6 +79,24 @@ export function useBiliConfig() {
         await browser.storage.local.set(zeroConfig);
         await browser.tabs.sendMessage(tabs[0].id, { type: 'UPDATE_CONFIG', ...zeroConfig });
        
+    };
+
+    // 手动存档
+    const handleArchive = async () => {
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]?.id) return;
+
+        const response = await browser.runtime.sendMessage({
+            type: 'DO_ARCHIVE',
+            data: {
+                tab: { id: tabs[0].id, title: tabs[0].title, url: tabs[0].url },
+                config: { sH: sH(), sM: sM(), sS: sS(), mH: mH(), mM: mM(), mS: mS(), eH: eH(), eM: eM(), eS: eS() }
+            }
+        });
+
+        if (response?.pinnedHistory) {
+            setPinnedHistory(response.pinnedHistory.slice(0, 3));
+        }
     };
 
     const loadHistory = async (item: HistoryItem) => {
@@ -131,8 +136,7 @@ export function useBiliConfig() {
         // 操作方法
         initFromStorage,
         saveMode,
-        resetConfig,
-        handleApply,
+        applyConfig,
         handleArchive,
         loadHistory,
         openOptions
