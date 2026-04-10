@@ -24,16 +24,7 @@ export function useBiliConfig() {
     // --- 3. 列表信号 ---
     const [latestHistory, setLatestHistory] = createSignal<HistoryItem[]>([]);
     const [pinnedHistory, setPinnedHistory] = createSignal<HistoryItem[]>([]);
-
-    const saveMode = async (newMode: 'auto' | 'manual') => {
-        setMode(newMode);
-        await browser.storage.local.set({ mode: newMode });
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        if (tabs[0]?.id) {
-            await browser.tabs.sendMessage(tabs[0].id, { type: 'SET_MODE', mode: newMode });
-        }
-    };
-
+    
     const initFromStorage = async () => {
         const res = await browser.storage.local.get([
             'sH', 'sM', 'sS', 'mH', 'mM', 'mS', 'eH', 'eM', 'eS',
@@ -50,6 +41,15 @@ export function useBiliConfig() {
         if (Array.isArray(res.pinnedHistory)) setPinnedHistory(res.pinnedHistory.slice(0, 3) as HistoryItem[]);
     };
 
+    const saveMode = async (newMode: 'auto' | 'manual') => {
+        setMode(newMode);
+        await browser.storage.local.set({ mode: newMode });
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        if (tabs[0]?.id) {
+            await browser.tabs.sendMessage(tabs[0].id, { type: 'SET_MODE', mode: newMode });
+        }
+    };
+
     const applyConfig = async (type:string) => {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (!tabs[0]?.id) return;
@@ -64,21 +64,6 @@ export function useBiliConfig() {
         await browser.storage.local.set(configValues);
 
         await browser.tabs.sendMessage(tabs[0].id, { type: 'UPDATE_CONFIG', ...configValues });
-    };
-
-   
-    const resetConfig = async () => {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tabs[0]?.id) return;
-        const zeroConfig = { sH: 0, sM: 0, sS: 0, mH: 0, mM: 0, mS: 0, eH: 0, eM: 0, eS: 0 };
-        // 重置信号
-        setSH(0); setSM(0); setSS(0);
-        setMH(0); setMM(0); setMS(0);
-        setEH(0); setEM(0); setES(0);
-        // 同步到存储
-        await browser.storage.local.set(zeroConfig);
-        await browser.tabs.sendMessage(tabs[0].id, { type: 'UPDATE_CONFIG', ...zeroConfig });
-       
     };
 
     // 手动存档

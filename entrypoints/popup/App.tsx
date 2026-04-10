@@ -30,12 +30,22 @@ export default function App() {
     setMode(res.mode === 'manual' ? 'manual' : 'auto');
 
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.url?.includes('bilibili.com/video')) {
-      setIsPageReady(true);
+    const activeTab = tabs[0];
+    if (activeTab?.id && activeTab.url?.includes('bilibili.com/video')) {
+      try {
+        const resp = await browser.tabs.sendMessage(activeTab.id, { type: 'QUERY_READY_STATUS' });
+        console.log(resp);
+        if (resp) setIsPageReady(resp.isCollection);
+      } catch (e) {
+        setIsPageReady(false);
+      }
     }
 
     // 监听后台的自动更新广播
     browser.runtime.onMessage.addListener((msg) => {
+      if (msg.type === 'SYNC_PAGE_READY') {
+        setIsPageReady(msg.isCollection);
+      }
       if (msg.type === 'REFRESH_HISTORY') setLatestHistory(msg.data);
     });
   });
