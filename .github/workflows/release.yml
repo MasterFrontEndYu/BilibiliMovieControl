@@ -43,6 +43,10 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_CLIENT_SECRET }} 
           EDGE_TENANT_ID: ${{ secrets.EDGE_ACCESS_TOKEN_URL }}
+          # 如果是 Node 18+
+          NODE_OPTIONS: "--experimental-fetch" 
+          # 关键方案：通过环境变量影响底层 fetch 行为
+          UNDICI_MAX_ATTEMPTS: 3
 
       # 只有当上述 publish 成功执行后，才创建 GitHub Release 并挂载 ZIP
       - name: Create GitHub Release
