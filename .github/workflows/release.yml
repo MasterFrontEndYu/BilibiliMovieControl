@@ -11,29 +11,29 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    # 只有当 commit 信息包含 "Version Packages" 或者由你本地 changeset version 产生变动时运行
-    # 或者简单点：每次 push 检查，由 changesets 插件内部判断是否需要 publish
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 20
+          # 如果你使用 pnpm，请取消下面两行的注释并确保项目有 pnpm-lock.yaml
+          # cache: 'pnpm'
 
-      - name: Install dependencies
-        run: bun install
+      - name: Install Dependencies
+        # 建议使用 pnpm 或 npm 以保证环境一致性
+        run: npm install
 
       - name: Publish to Stores
         id: changesets
         uses: changesets/action@v1
         with:
-          # 【关键】因为你在本地已经跑过 version 了，这里不需要 version 参数
-          # 插件会自动检测：如果没有 .changeset 目录且版本号升了，就会运行 publish
-          publish: bun run release
+          # 使用 npm run release。确保 package.json 里的 release 脚本不再包含 "bun" 前缀
+          publish: npm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIREFOX_EXTENSION_ID: ${{ secrets.AMO_EXTENSION_ID }}
@@ -43,10 +43,23 @@ jobs:
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_CLIENT_SECRET }} 
           EDGE_TENANT_ID: ${{ secrets.EDGE_ACCESS_TOKEN_URL }}
-          # 如果是 Node 18+
+          # 关键：禁用 Node 的持久连接，防止 Mozilla 端主动断开导致的 fetch 失败
           NODE_OPTIONS: "--no-warnings"
 
-      # 只有当上述 publish 成功执行后，才创建 GitHub Release 并挂载 ZIP
+      # --- 核心改进：如果上面由于网络原因失败，专门为火狐执行带重试的提交 ---
+      - name: Retry Firefox Submission
+        if: failure()
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          # 直接调用 wxt submit 上传已经 build 好的压缩包
+          command: npx wxt submit --firefox-zip .output/*firefox*.zip
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.AMO_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.AMO_SIGNING_KEY }}
+          FIREFOX_JWT_SECRET: ${{ secrets.AMO_SIGNING_SECRET }}
+
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
         uses: softprops/action-gh-release@v2
@@ -54,9 +67,7 @@ jobs:
           files: |
             .output/*firefox*.zip
             .output/*edge*.zip
-          # 使用 package.json 里的新版本号作为 Tag
           tag_name: v${{ steps.changesets.outputs.version }}
-          # 自动从 CHANGELOG.md 提取本次更新内容
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
