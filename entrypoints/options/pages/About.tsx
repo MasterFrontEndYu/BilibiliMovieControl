@@ -1,4 +1,3 @@
-// entrypoints/options/pages/About.tsx
 import {
     Monitor,
     Cpu,
@@ -6,19 +5,20 @@ import {
     Bookmark,
     History,
     CircleAlert,
-    CirclePlay
+    CirclePlay,
+    Settings2
 } from 'lucide-solid';
 
 export default function AboutPage() {
     return (
-        <div style={{ "max-width": "900px", margin: "0 auto" }}>
+        <div style={{ "max-width": "900px", margin: "0 auto", padding: "20px 0" }}>
             {/* 头部标题 */}
             <header style={{ "margin-bottom": "40px" }}>
                 <h1 style={{ "font-size": "32px", margin: "0 0 12px 0", color: "#fb7299", "display": "flex", "align-items": "center", gap: "12px" }}>
                     <CirclePlay size={36} /> BilibiliMovieControl
                 </h1>
                 <p style={{ color: "#61666d", "font-size": "16px", "line-height": "1.6" }}>
-                    专为 Bilibili 合集视频打造的连播助手。通过智能检测与个性化存档，让你的观看体验更丝滑。
+                    专为 Bilibili 合集视频打造的连播助手。通过像素级帧分析与灵活的存档机制，让你的追剧体验真正实现“无人值守”。
                 </p>
             </header>
 
@@ -31,13 +31,17 @@ export default function AboutPage() {
                 <div>
                     <strong style={{ color: "#fb7299", "font-size": "16px" }}>适用范围说明</strong>
                     <p style={{ margin: "4px 0 0 0", color: "#61666d", "font-size": "14px" }}>
-                        本插件仅针对 B 站用户上传的<strong>“合集”</strong>（显示选集列表的视频）生效。对普通单个视频或非合集页面无效。
+                        本插件仅针对 B 站用户上传的<strong>“合集”</strong>（即播放器右侧显示选集列表的视频）生效。对电影、番剧正片或普通单视频无效。
                     </p>
                 </div>
             </div>
 
-            {/* 功能卡片列表 */}
-            <div style={{ display: "grid", "grid-template-columns": "repeat(2, 1x)", gap: "20px" }}>
+            {/* 功能卡片列表 - 修改为网格布局 */}
+            <div style={{
+                display: "grid",
+                "grid-template-columns": "repeat(2, 1fr)",
+                gap: "20px"
+            }}>
 
                 {/* 1. 模式选择 */}
                 <section style={cardStyle}>
@@ -45,13 +49,10 @@ export default function AboutPage() {
                     <div style={{ flex: 1 }}>
                         <h3 style={cardTitleStyle}>模式选择</h3>
                         <p style={cardTextStyle}>
-                            <strong>自动模式：</strong> 采用像素级帧分析技术，实时检测视频末尾是否出现黑屏或静止画面。符合条件即自动跳转。
+                            <strong>自动模式：</strong> 采用后台像素级分析，检测视频末尾黑屏即跳。无需手动干预，默认在最后 15% 阶段开启。
                         </p>
-                        <div style={tagBoxStyle}>
-                            <span style={tagStyle}><Cpu size={12} /> 性能优化：仅在视频最后 15% 阶段开启分析</span>
-                        </div>
                         <p style={{ ...cardTextStyle, "margin-top": "10px" }}>
-                            <strong>手动模式：</strong> 提供精确到秒的时间输入框，到达预设时间点准时切集。
+                            <strong>手动模式：</strong> 自定义切集时间点，精准控制每一秒。
                         </p>
                     </div>
                 </section>
@@ -62,18 +63,18 @@ export default function AboutPage() {
                     <div style={{ flex: 1 }}>
                         <h3 style={cardTitleStyle}>OP / 先导跳过</h3>
                         <p style={cardTextStyle}>
-                            针对片头较长的视频，可手动设置“跳过区间”。当播放进度进入该区间时，插件将自动跨越到设定的结束时间点。
+                            针对片头较长的合集，可设置跳过区间。一旦进入预设范围，插件将瞬间跨越到正片起始位置。
                         </p>
                     </div>
                 </section>
 
-                {/* 3. 最近播放 */}
+                {/* 3. 自动存档 (最近播放) */}
                 <section style={cardStyle}>
                     <div style={iconBoxStyle}><History color="#fb7299" /></div>
                     <div style={{ flex: 1 }}>
-                        <h3 style={cardTitleStyle}>最近播放</h3>
+                        <h3 style={cardTitleStyle}>自动存档</h3>
                         <p style={cardTextStyle}>
-                            后台自动记录最近播放的两条合集视频。当你再次打开相同视频时，插件会自动同步之前的跳转配置。
+                            系统自动记录最近 20 条合集配置。Popup 界面优先展示最近 2 条，再次访问时自动恢复 OP 跳过与切集参数。
                         </p>
                     </div>
                 </section>
@@ -84,17 +85,34 @@ export default function AboutPage() {
                     <div style={{ flex: 1 }}>
                         <h3 style={cardTitleStyle}>手动存档</h3>
                         <p style={cardTextStyle}>
-                            支持最多 3 条长期手动存档。点击“存档”按钮将当前合集标题、URL 及所有跳过参数永久封存。再次点击列表中的记录可一键还原所有设置。
+                            支持最多 20 条长期手动配置，可一键锁定你最喜爱的合集参数。点击存档即可快速同步时间点。
                         </p>
                     </div>
                 </section>
 
+                {/* 5. 性能与调节 (跨两列显示或普通显示) */}
+                <section style={{ ...cardStyle, "grid-column": "span 2" }}>
+                    <div style={iconBoxStyle}><Settings2 color="#fb7299" /></div>
+                    <div style={{ flex: 1 }}>
+                        <h3 style={cardTitleStyle}>进阶设置</h3>
+                        <div style={{ display: "flex", gap: "40px" }}>
+                            <div style={{ flex: 1 }}>
+                                <p style={cardTextStyle}>
+                                    <strong>读帧起始进度：</strong> 可调节分析起始点。设置 90% 以上可显著降低 CPU 占用；针对有超长后记的合集，建议调低数值。
+                                </p>
+                            </div>
+                            <div style={tagBoxStyle}>
+                                <span style={tagStyle}><Cpu size={12} /> 动态 CPU 优化技术已启用</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     );
 }
 
-// --- 样式定义 (复用 History 页面的卡片逻辑) ---
+// --- 样式定义 ---
 const cardStyle = {
     background: "#fff",
     padding: "24px",
@@ -119,7 +137,8 @@ const iconBoxStyle = {
 const cardTitleStyle = {
     margin: "0 0 10px 0",
     "font-size": "18px",
-    color: "#18191c"
+    color: "#18191c",
+    "font-weight": "600"
 };
 
 const cardTextStyle = {
@@ -130,17 +149,18 @@ const cardTextStyle = {
 };
 
 const tagBoxStyle = {
-    "margin-top": "8px",
-    display: "flex"
+    display: "flex",
+    "align-items": "center"
 };
 
 const tagStyle = {
     background: "#f6f7f9",
     color: "#9499a0",
-    padding: "4px 8px",
-    "border-radius": "4px",
+    padding: "6px 12px",
+    "border-radius": "6px",
     "font-size": "12px",
     display: "flex",
     "align-items": "center",
-    gap: "4px"
+    gap: "6px",
+    border: "1px solid #e3e5e7"
 };
