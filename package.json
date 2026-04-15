@@ -1,5 +1,5 @@
 {
-    "name": "B站连播助手 (Bilibili Movie Control)",
+    "name": "B站连播助手",
     "description": "基于 SolidJS 开发的 Bilibili 视频跳转工具",
     "private": true,
     "version": "1.1.2",

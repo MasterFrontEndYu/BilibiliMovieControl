@@ -23,3 +23,9 @@ export const getBiliCollection = async (tabId: number): Promise<string> => {
         return '';
     }
 };
+
+
+export const getSoftName = () => browser.runtime.getManifest().name;
+
+
+export const getSoftVersion = () => browser.runtime.getManifest().version;

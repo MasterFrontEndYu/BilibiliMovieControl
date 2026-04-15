@@ -3,6 +3,7 @@ import { A } from '@solidjs/router';
 import { Settings, History, Info, HandGrab } from 'lucide-solid';
 import { OptionsFooter } from '@/components/OptionsFooter';
 
+import { getSoftName } from '@/utils/bili';
 
 export default function Layout(props: ParentProps) {
     return (
@@ -26,7 +27,7 @@ export default function Layout(props: ParentProps) {
                 'flex-shrink': 0    // 防止被右侧挤压
             }}>
                 <div>
-                    <h2 style={{ color: '#fb7299', 'font-size': '18px', 'margin-bottom': '20px' }}>连播助手设置</h2>
+                    <h2 style={{ color: '#fb7299', 'font-size': '18px', 'margin-bottom': '20px' }}>{getSoftName()}设置</h2>
 
                     <A href="/" end activeClass="active-link" style={navStyle}>
                         <Settings size={18} /> 全局配置
