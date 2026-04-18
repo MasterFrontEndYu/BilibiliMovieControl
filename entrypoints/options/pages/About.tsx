@@ -8,6 +8,8 @@ import {
     CirclePlay,
     Settings2
 } from 'lucide-solid';
+import { getSoftName } from '@/utils/bili';
+
 
 export default function AboutPage() {
     return (
@@ -15,7 +17,7 @@ export default function AboutPage() {
             {/* 头部标题 */}
             <header style={{ "margin-bottom": "40px" }}>
                 <h1 style={{ "font-size": "32px", margin: "0 0 12px 0", color: "#fb7299", "display": "flex", "align-items": "center", gap: "12px" }}>
-                    <CirclePlay size={36} /> BilibiliMovieControl
+                    <CirclePlay size={36} />{getSoftName()}
                 </h1>
                 <p style={{ color: "#61666d", "font-size": "16px", "line-height": "1.6" }}>
                     专为 Bilibili 合集视频打造的连播助手。通过像素级帧分析与灵活的存档机制，让你的追剧体验真正实现“无人值守”。

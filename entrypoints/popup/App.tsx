@@ -6,6 +6,9 @@ import { HistoryList } from '@/components/HistoryList';
 import { browser } from 'wxt/browser';
 import { Settings } from 'lucide-solid';
 
+import { getSoftName } from '@/utils/bili';
+
+
 export default function App() {
   const {
     sH, setSH, sM, setSM, sS, setSS,
@@ -53,7 +56,7 @@ export default function App() {
   return (
     <div style={{ width: '280px', padding: '15px', display: 'flex', 'flex-direction': 'column', gap: '12px', background: '#fff' }}>
       <h3 style={{ display: 'flex', "align-items": 'center', "justify-content": 'center', margin: '0', 'font-size': '16px', color: '#fb7299' }}>
-        B站连播助手
+        {getSoftName()}
         <span style={{ 'font-size': '10px', 'margin-left': '6px', padding: '2px 4px', background: isPageReady() ? '#4caf50' : '#9e9e9e', color: 'white', 'border-radius': '3px' }}>
           {isPageReady() ? '已就绪' : '待命中'}
         </span>
