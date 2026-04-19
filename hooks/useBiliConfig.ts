@@ -54,8 +54,11 @@ export const useBiliConfig = () => {
     const applyConfig = async (type: 'setting' | 'reset') => {
         if (type === 'reset') {
             const zero = { h: 0, m: 0, s: 0 };
-            setFrameConfig(zero);
-            setJumpConfig(zero);
+            if (mode() === 'auto') {
+                setFrameConfig(zero);
+            } else {
+                setJumpConfig(zero);
+            }
         }
 
         const configData = {

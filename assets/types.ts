@@ -26,5 +26,6 @@ export interface TimeRange {
 
 export interface TimeRangeManagerProps {
     ranges: TimeRange[];
+    onUpdate: (newList: TimeRange[]) => void;
     onClose: () => void;
 }

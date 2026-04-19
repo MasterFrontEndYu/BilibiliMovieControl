@@ -13,10 +13,15 @@ import { getSoftName } from '@/utils/bili';
 
 export default function App() {
   const {
-    isPageReady, setIsPageReady,
+    opRanges, setOpRanges,
+    frameConfig, setFrameConfig,
+    jumpConfig, setJumpConfig,
     mode, setMode,
+    isPageReady, setIsPageReady,
     latestHistory, setLatestHistory,
     pinnedHistory,
+
+    // 方法
     initFromStorage,
     saveMode,
     applyConfig,
@@ -149,10 +154,10 @@ export default function App() {
       <div style={{ display: 'flex', 'flex-direction': 'column', gap: '10px' }}>
         <Switch>
           <Match when={mode() === 'auto'}>
-            <TimeInput label="帧" hour={eH()} minute={eM()} second={eS()} onHourChange={setEH} onMinuteChange={setEM} onSecondChange={setES} />
+            <TimeInput label="帧" hour={frameConfig().h} minute={frameConfig().m} second={frameConfig().s} onHourChange={setFrameConfig} onMinuteChange={setFrameConfig} onSecondChange={setFrameConfig} />
           </Match>
           <Match when={mode() === 'manual'}>
-            <TimeInput label="切" hour={eH()} minute={eM()} second={eS()} onHourChange={setEH} onMinuteChange={setEM} onSecondChange={setES} />
+            <TimeInput label="切" hour={jumpConfig().h} minute={jumpConfig().m} second={jumpConfig().s} onHourChange={setJumpConfig} onMinuteChange={setJumpConfig} onSecondChange={setJumpConfig} />
           </Match>
         </Switch>
       </div>

@@ -1,8 +1,6 @@
 import { browser } from 'wxt/browser';
 import { getBiliCollection } from '@/utils/bili';
-
-import { HistoryItem } from '../assets/types';
-
+import { HistoryItem, TimePoint, TimeRange } from '../assets/types';
 
 const DEBOUNCE_TIME = 2000;
 const MAX_HISTORY_LENGTH = 20;
@@ -25,7 +23,7 @@ function cleanBiliUrl(url: string): string {
 export default defineBackground(() => {
 
   /**
-   * 核心：处理手动存档
+   * 核心：处理手动存档 (Pinned)
    */
   const handleArchiveLogic = async (tab: any, config: any) => {
     const rawUrl = tab.url || '';
@@ -34,18 +32,22 @@ export default defineBackground(() => {
 
     if (!colTitle) return [];
 
-    // 指定获取的类型
-    const storage:any = await browser.storage.local.get({ pinnedHistory: [] }) ;
+    const storage = await browser.storage.local.get({ pinnedHistory: [] });
 
+    // 匹配新的数据结构
     const newItem: HistoryItem = {
+      id: crypto.randomUUID(), // 建议加上 ID
       title: colTitle,
       url: cleanedUrl,
       time: Date.now(),
-      config: config
+      pinned: true,
+      // 这里的 config 应该包含 opRanges, frameConfig, jumpConfig, mode
+      ...config
     };
 
-    const filteredHistory = storage.pinnedHistory.filter(
-      (item:any) => cleanBiliUrl(item.url) !== cleanedUrl
+    const history = (storage.pinnedHistory as any[]) || [];
+    const filteredHistory = history.filter(
+      (item: any) => cleanBiliUrl(item.url) !== cleanedUrl
     );
 
     const newPinned = [newItem, ...filteredHistory].slice(0, MAX_HISTORY_LENGTH);
@@ -54,65 +56,73 @@ export default defineBackground(() => {
   };
 
   /**
-   * 自动记录历史
+   * 自动记录最近历史 (Latest)
    */
   browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    // 修复：确保 url 始终为 string 传给 getBiliCollection 或其他函数
     const rawUrl: string = tab.url || '';
 
     if (changeInfo.status === 'complete' && rawUrl.includes('bilibili.com/video')) {
       const cleanedUrl = cleanBiliUrl(rawUrl);
       const now = Date.now();
 
+      // 防抖
       const lastTime = processedLogs.get(cleanedUrl) || 0;
       if (now - lastTime < DEBOUNCE_TIME) return;
 
       processedLogs.set(cleanedUrl, now);
-      const firstKey = processedLogs.keys().next().value;
-      if (typeof firstKey === 'string') {
-        processedLogs.delete(firstKey);
+      if (processedLogs.size > 50) { // 防止 Map 过大
+        const firstKey = processedLogs.keys().next().value;
+        if (firstKey) processedLogs.delete(firstKey);
       }
 
       const colTitle = await getBiliCollection(tabId);
       if (colTitle) {
-        // 指定获取的类型
-        const storage: any = await browser.storage.local.get({
+        // 读取当前最新的配置快照
+        const storage = await browser.storage.local.get({
           latestHistory: [],
-          sH: 0, sM: 0, sS: 0, mH: 0, mM: 0, mS: 0, eH: 0, eM: 0, eS: 0 }) ;
+          opRanges: [],
+          frameConfig: { h: 0, m: 0, s: 0 },
+          jumpConfig: { h: 0, m: 0, s: 0 },
+          mode: 'auto'
+        });
 
         const newItem: HistoryItem = {
           title: colTitle,
           url: cleanedUrl,
           time: now,
-          config: {
-            sH: storage.sH, sM: storage.sM, sS: storage.sS,
-            mH: storage.mH, mM: storage.mM, mS: storage.mS,
-            eH: storage.eH, eM: storage.eM, eS: storage.eS,
-          },
+          opRanges: storage.opRanges as TimeRange[],
+          frameConfig: storage.frameConfig as TimePoint,
+          jumpConfig: storage.jumpConfig as TimePoint,
+          mode: storage.mode as 'auto' | 'manual'
         };
 
-        const filteredLatest = storage.latestHistory.filter(
-          (item:any) => cleanBiliUrl(item.url) !== cleanedUrl
+        const history = (storage.latestHistory as any[]) || [];
+        const filteredLatest = history.filter(
+          (item: any) => cleanBiliUrl(item.url) !== cleanedUrl
         );
 
         const newLatest = [newItem, ...filteredLatest].slice(0, MAX_HISTORY_LENGTH);
         await browser.storage.local.set({ latestHistory: newLatest });
 
+        // 广播更新通知给 Popup
         browser.runtime.sendMessage({
           type: 'REFRESH_HISTORY',
-          data: { latestHistory: newLatest }
+          data: newLatest // 直接传递数组
         }).catch(() => { });
       }
     }
   });
 
+  /**
+   * 监听消息请求
+   */
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'DO_ARCHIVE') {
       handleArchiveLogic(message.data.tab, message.data.config)
         .then(newPinned => {
           sendResponse({ success: true, pinnedHistory: newPinned });
         });
-      return true;
+      return true; // 保持异步通道开启
     }
   });
 });

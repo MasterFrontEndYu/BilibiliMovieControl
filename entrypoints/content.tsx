@@ -1,5 +1,5 @@
 import { render } from 'solid-js/web';
-import { createSignal, Show } from 'solid-js';
+import { createSignal, Show, For } from 'solid-js';
 import { browser } from 'wxt/browser';
 import {
   initFrameAnalyzer,
@@ -9,22 +9,22 @@ import {
   updateAnalyzerConfig,
   destroyFrameAnalyzer,
 } from '../utils/frameAnalyzer';
+import { TimeRange, TimePoint } from '@/assets/types';
 
 export default defineContentScript({
   matches: ['*://*.bilibili.com/video/*'],
   cssInjectionMode: 'manual',
 
   async main(ctx) {
-    // --- 1. 响应式状态与信号 ---
-    const [config, setConfig] = createSignal({ skipStart: 0, skipEnd: 0, jumpEnd: 0 });
+    // --- 1. 响应式状态 ---
+    const [opRanges, setOpRanges] = createSignal<TimeRange[]>([]);
+    const [frameConfig, setFrameConfig] = createSignal<TimePoint>({ h: 0, m: 0, s: 0 });
+    const [jumpConfig, setJumpConfig] = createSignal<TimePoint>({ h: 0, m: 0, s: 0 });
+
     const [isCollectionPage, setIsCollectionPage] = createSignal(false);
     const [mode, setMode] = createSignal<'auto' | 'manual'>('auto');
     const [isAnalyzing, setIsAnalyzing] = createSignal(false);
     const [threshold, setThreshold] = createSignal(85);
-
-    // 新增两个状态，仅用于 UI 显示和逻辑判断转换
-    const [useManualTime, setUseManualTime] = createSignal(false);
-    const [manualSeconds, setManualSeconds] = createSignal(0);
 
     let lastUrl = location.href;
     let lastJumpTime = 0;
@@ -32,22 +32,17 @@ export default defineContentScript({
 
     // --- 2. 核心辅助函数 ---
 
-    // 配置解析 (在此处统一转换逻辑)
+    // 转换 TimePoint 为秒数
+    const toSeconds = (t: TimePoint) => (t.h || 0) * 3600 + (t.m || 0) * 60 + (t.s || 0);
+
+    // 更新配置逻辑 (匹配新的数据结构)
     const updateConfig = (data: any) => {
-      const getSeconds = (h: any, m: any, s: any) =>
-        Number(h || 0) * 3600 + Number(m || 0) * 60 + Number(s || 0);
+      if (data.opRanges) setOpRanges(data.opRanges);
+      if (data.frameConfig) setFrameConfig(data.frameConfig);
+      if (data.jumpConfig) setJumpConfig(data.jumpConfig);
+      if (data.mode) setMode(data.mode);
 
-      const s = getSeconds(data.sH, data.sM, data.sS);
-      const m = getSeconds(data.mH, data.mM, data.mS);
-      const e = getSeconds(data.eH, data.eM, data.eS);
-
-      setConfig({ skipStart: s, skipEnd: m, jumpEnd: e });
-
-      // 同步新字段
-      if (data.useManualTime !== undefined) setUseManualTime(data.useManualTime);
-      if (data.manualSeconds !== undefined) setManualSeconds(data.manualSeconds);
-
-      // 统一设置分析阈值
+      // 如果有阈值设置，同步给分析器
       if (data.frameThreshold !== undefined) {
         setThreshold(data.frameThreshold);
         updateAnalyzerConfig({
@@ -70,35 +65,32 @@ export default defineContentScript({
       mountPoint.id = 'bili-skip-wrapper-unique';
       anchor.appendChild(mountPoint);
 
-      const format = (s: number) => {
-        const h = Math.floor(s / 3600);
-        const m = Math.floor((s % 3600) / 60);
-        const sec = Math.floor(s % 60);
+      const format = (t: TimePoint) => {
         const pad = (n: number) => n.toString().padStart(2, '0');
-        return `${h}:${pad(m)}:${pad(sec)}`;
+        return `${t.h}:${pad(t.m)}:${pad(t.s)}`;
       };
 
       disposeUI = render(() => (
         <Show when={isCollectionPage()}>
           <div style={{
-            display: 'inline-flex', "align-items": 'center', gap: '10px',
-            padding: '2px 10px', background: '#fb7299', color: 'white',
-            "border-radius": '6px', "font-size": '12px', "margin-left": '12px',
-            "vertical-align": 'middle', "font-family": 'sans-serif'
+            display: 'inline-flex', "align-items": 'center', gap: '8px',
+            padding: '4px 12px', background: '#fb7299', color: 'white',
+            "border-radius": '20px', "font-size": '12px', "margin-left": '12px',
+            "vertical-align": 'middle', "box-shadow": '0 2px 6px rgba(251,114,153,0.3)'
           }}>
-            <span>⏭ {format(config().skipStart)}-{format(config().skipEnd)}</span>
+            <span title="跳过段数">⏭ {opRanges().length}段</span>
             <span style={{ opacity: 0.5 }}>|</span>
             <span>
-              🏁 {mode() === 'manual'
-                ? `切集: ${format(config().jumpEnd)}`
-                : `${useManualTime() ? '定时' : `自动(${threshold()}%)`} ${isAnalyzing() ? '分析中...' : '待机'}`}
+              {mode() === 'manual'
+                ? `🏁 切集: ${format(jumpConfig())}`
+                : `🔍 帧分析: ${format(frameConfig())}`}
             </span>
+            {isAnalyzing() && <span style={{ "margin-left": '4px', animation: 'blink 1s infinite' }}>●</span>}
           </div>
         </Show>
       ), mountPoint);
     };
 
-    // 跳转执行
     const executeJump = () => {
       const now = Date.now();
       if (now - lastJumpTime < 3000) return;
@@ -112,60 +104,56 @@ export default defineContentScript({
 
     const runControlLogic = () => {
       const video = getMainVideo();
-      if (!video || video.readyState < 2) {
-        if (isAnalyzing()) setIsAnalyzing(false);
-        return;
-      }
+      if (!video || video.readyState < 2) return;
 
       const cur = video.currentTime;
-      const { skipStart, skipEnd, jumpEnd } = config();
 
-      if (skipEnd > 0 && cur >= skipStart && cur < skipEnd) {
-        video.currentTime = skipEnd;
-        return;
+      // 1. 处理多段跳过 (opRanges)
+      for (const range of opRanges()) {
+        const start = toSeconds(range.start);
+        const end = toSeconds(range.end);
+        if (end > start && cur >= start && cur < end) {
+          video.currentTime = end;
+          console.log(`[BiliControl] 跳过区间: ${start} -> ${end}`);
+          return; // 一次只跳一段
+        }
       }
 
+      // 2. 处理自动/手动切集逻辑
       if (mode() === 'manual') {
-        if (jumpEnd > 0 && cur >= jumpEnd) executeJump();
+        const jumpTime = toSeconds(jumpConfig());
+        if (jumpTime > 0 && cur >= jumpTime) executeJump();
       } else {
-        const currentProgress = (cur / video.duration) * 100;
-        const isInAnalyzeZone = useManualTime()
-          ? cur >= manualSeconds()
-          : currentProgress >= threshold();
+        // 自动模式：到达 frameConfig 指定的时间点开始分析
+        const analyzeStartTime = toSeconds(frameConfig());
+        if (analyzeStartTime > 0 && cur >= analyzeStartTime) {
+          if (!isAnalyzing()) setIsAnalyzing(true);
 
-        if (isInAnalyzeZone) {
-          setIsAnalyzing(true);
-
-          // --- 修改点：确保分析器准入 ---
-          // 如果是精确时间模式，我们认为已经到达了“可跳转区域”
-          // 传 0 或者 传一个极小值，确保 checkEndingByFrame 内部的百分比检查永远通过
-          const testThreshold = useManualTime() ? 0 : threshold();
-
-          if (checkEndingByFrame(video, !video.paused, testThreshold)) {
+          // 执行帧分析逻辑
+          if (checkEndingByFrame(video, !video.paused, threshold())) {
             executeJump();
             setIsAnalyzing(false);
           }
-        } else if (isAnalyzing()) {
-          setIsAnalyzing(false);
+        } else {
+          if (isAnalyzing()) setIsAnalyzing(false);
         }
       }
     };
 
-    // --- 3. 初始化与主监听 ---
+    // --- 3. 初始化 ---
     const stored = await browser.storage.local.get([
-      'sH', 'sM', 'sS', 'mH', 'mM', 'mS', 'eH', 'eM', 'eS',
-      'mode', 'frameThreshold', 'useManualTime', 'manualSeconds'
+      'opRanges', 'frameConfig', 'jumpConfig', 'mode', 'frameThreshold'
     ]);
-
-    setMode(stored.mode === 'manual' ? 'manual' : 'auto');
     updateConfig(stored);
 
     const initialThreshold = (stored.frameThreshold as number) ?? 85;
     initFrameAnalyzer({ endingPercentThreshold: initialThreshold, minRemainingSeconds: 999999 });
 
+    // 监听来自 Popup 的配置更新
     const handleMessage = (msg: any, sender: any, sendResponse: any) => {
-      if (msg.type === 'UPDATE_CONFIG' || msg.type === 'CONFIG_UPDATED') updateConfig(msg.data || msg);
-      if (msg.type === 'SET_MODE') setMode(msg.mode);
+      if (msg.type === 'UPDATE_VIDEO_CONFIG' || msg.type === 'UPDATE_CONFIG') {
+        updateConfig(msg.data);
+      }
       if (msg.type === 'QUERY_READY_STATUS') {
         sendResponse({ isCollection: isCollectionPage() });
       }
@@ -182,26 +170,22 @@ export default defineContentScript({
       if (isCol !== isCollectionPage()) {
         setIsCollectionPage(isCol);
         browser.runtime.sendMessage({ type: 'SYNC_PAGE_READY', isCollection: isCol }).catch(() => { });
-      };
-
-      if (!isCol) {
-        const ui = document.getElementById('bili-skip-wrapper-unique');
-        if (ui) ui.remove();
-        return;
       }
 
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        lastJumpTime = 0;
-        resetFrameAnalyzer();
-        setTimeout(mountUI, 1000);
+      if (isCol) {
+        if (location.href !== lastUrl) {
+          lastUrl = location.href;
+          lastJumpTime = 0;
+          resetFrameAnalyzer();
+          setTimeout(mountUI, 1000);
+        }
+        mountUI();
+        runControlLogic();
+      } else {
+        document.getElementById('bili-skip-wrapper-unique')?.remove();
       }
-
-      mountUI();
-      runControlLogic();
     }, 1000);
 
-    // --- 5. 销毁逻辑 ---
     ctx.onInvalidated(() => {
       clearInterval(mainTimer);
       browser.runtime.onMessage.removeListener(handleMessage);
