@@ -121,7 +121,7 @@ export const useBiliConfig = () => {
         const newHistory = [currentData, ...history].slice(0, 50); // 最多保留50条记录
 
         await browser.storage.local.set({ pinnedHistory: newHistory });
-        setLatestHistory(newHistory.slice(0, 2));
+        setPinnedHistory(newHistory.slice(0, 3));
     };
 
     /**

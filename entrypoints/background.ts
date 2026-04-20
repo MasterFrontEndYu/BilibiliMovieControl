@@ -6,6 +6,10 @@ const DEBOUNCE_TIME = 2000;
 const MAX_HISTORY_LENGTH = 20;
 const processedLogs = new Map<string, number>();
 
+
+// TODO: 1. 目前的存档逻辑比较简单，后续可以考虑更复杂的去重和更新策略（如根据 URL + 跳过配置来判断是否为同一视频）
+// TODO: 2. 手动存档要从usebiliConfig里抽离出来，
+
 /**
  * URL 清洗逻辑
  */
@@ -36,11 +40,10 @@ export default defineBackground(() => {
 
     // 匹配新的数据结构
     const newItem: HistoryItem = {
-      id: crypto.randomUUID(), // 建议加上 ID
+      id: tab.id, // 建议加上 ID
       title: colTitle,
       url: cleanedUrl,
       time: Date.now(),
-      pinned: true,
       // 这里的 config 应该包含 opRanges, frameConfig, jumpConfig, mode
       ...config
     };
