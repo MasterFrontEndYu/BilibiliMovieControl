@@ -1,11 +1,12 @@
 export interface BiliVideoConfig {
-    opRanges: TimeRange[];    // 跳过列表
-    frameConfig: TimePoint;   // 帧分析点
-    jumpConfig: TimePoint;    // 手动切集点
-    mode: 'auto' | 'manual';  // 当前模式
+    opRanges: TimeRange[]; // 跳过列表
+    frameConfig: TimePoint; // 帧分析点
+    jumpConfig: TimePoint; // 手动切集点
+    mode: "auto" | "manual"; // 当前模式
 }
 
 export interface HistoryItem extends BiliVideoConfig {
+    id: number;
     title: string;
     url: string;
     time: number;
@@ -17,11 +18,10 @@ export interface TimePoint {
     s: number; // 秒
 }
 
-
 export interface TimeRange {
-    id: string;      // 唯一标识，用于列表渲染和删除逻辑
+    id: string; // 唯一标识，用于列表渲染和删除逻辑
     start: TimePoint; // 起始时间
-    end: TimePoint;   // 结束时间
+    end: TimePoint; // 结束时间
 }
 
 export interface TimeRangeManagerProps {
