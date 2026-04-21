@@ -83,7 +83,7 @@ export default defineContentScript({
                                 display: "inline-flex",
                                 "align-items": "center",
                                 gap: "8px",
-                                padding: "2px 24px 2px 12px",
+                                padding: "1px 12px",
                                 background: "#fb7299",
                                 color: "white",
                                 "border-radius": "8px",
@@ -102,17 +102,17 @@ export default defineContentScript({
                                     ? `🏁 切集起点: ${format(jumpConfig())}`
                                     : `🔍 分析起点: ${format(frameConfig())}`}
                             </span>
-                            <Show when={isAnalyzing()}>
-                                <span
-                                    style={{
-                                        "margin-left": "4px",
-                                        animation: "blink 1s infinite",
-                                        color: "#fff",
-                                    }}
-                                >
-                                    ●
-                                </span>
-                            </Show>
+                            <span
+                                style={{
+                                    display: "inline-block",
+                                    width: "8px",
+                                    "margin-left": "4px",
+                                    animation: "blink 1s infinite",
+                                    color: "#fff",
+                                }}
+                            >
+                                {isAnalyzing() ?"●":""} 
+                            </span>
                         </div>
                     </Show>
                 ),
