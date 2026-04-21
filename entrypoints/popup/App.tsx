@@ -127,7 +127,6 @@ export default function App() {
                 <StyledButton
                     variant="reset"
                     loadingText="重置中..."
-                    // onClick={() => onApply("reset")}
                     onClick={[applyConfig, "reset"]}
                     icon={<Settings size={14} />}>重置</StyledButton>
 
