@@ -133,24 +133,24 @@ export const useBiliConfig = () => {
             active: true,
             currentWindow: true,
         });
-        const activeTab = tabs[0];
-        const currentData: HistoryItem = {
-            id: activeTab?.id || Date.now(),
-            title: activeTab.title || "未知标题",
-            url: activeTab.url || "",
-            time: Date.now(),
-            mode: mode(),
-            opRanges: opRanges(),
-            frameConfig: frameConfig(),
-            jumpConfig: jumpConfig(),
-        };
+        if (!tabs[0]?.id) return;
 
-        const res = await browser.storage.local.get("pinnedHistory");
-        const history = (res.pinnedHistory as HistoryItem[]) || [];
-        const newHistory = [currentData, ...history].slice(0, 50); // 最多保留50条记录
+        const response = await browser.runtime.sendMessage({
+            type: "DO_ARCHIVE",
+            data: {
+                tab: { id: tabs[0].id, title: tabs[0].title, url: tabs[0].url },
+                config: {
+                    mode: mode(),
+                    opRanges: opRanges(),
+                    frameConfig: frameConfig(),
+                    jumpConfig: jumpConfig(),
+                },
+            },
+        });
 
-        await browser.storage.local.set({ pinnedHistory: newHistory });
-        setPinnedHistory(newHistory.slice(0, 3));
+        if (response?.pinnedHistory) {
+            setPinnedHistory(response.pinnedHistory);
+        }
     };
 
     /**
