@@ -40,20 +40,16 @@ export default defineContentScript({
         let disposeUI: (() => void) | null = null;
 
         // --- 2. 核心辅助函数 ---
-
-        // 转换 TimePoint 为秒数
         const toSeconds = (t: TimePoint) =>
             (t.h || 0) * 3600 + (t.m || 0) * 60 + (t.s || 0);
 
-        // 更新配置逻辑 (清理了 threshold 相关的复杂转换)
         const updateConfig = (data: any) => {
             if (data.opRanges) setOpRanges(data.opRanges);
             if (data.frameConfig) setFrameConfig(data.frameConfig);
             if (data.jumpConfig) setJumpConfig(data.jumpConfig);
             if (data.mode) setMode(data.mode);
 
-            // 如果有算法敏感度设置，依然可以通过 updateAnalyzerConfig 传给分析器
-            // 但不再包含时间/百分比逻辑
+            
             if (data.analyzerSettings) {
                 updateAnalyzerConfig(data.analyzerSettings);
             }
@@ -103,7 +99,7 @@ export default defineContentScript({
                             <span style={{ opacity: 0.5 }}>|</span>
                             <span>
                                 {mode() === "manual"
-                                    ? `🏁 切集点: ${format(jumpConfig())}`
+                                    ? `🏁 切集起点: ${format(jumpConfig())}`
                                     : `🔍 分析起点: ${format(frameConfig())}`}
                             </span>
                             <Show when={isAnalyzing()}>
