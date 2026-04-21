@@ -11,6 +11,8 @@ import {
 } from "../utils/frameAnalyzer";
 import { TimeRange, TimePoint } from "@/assets/types";
 
+// TODO 1. 将ui 移至components，content只负责逻辑和状态管理
+
 export default defineContentScript({
     matches: ["*://*.bilibili.com/video/*"],
     cssInjectionMode: "manual",
@@ -85,12 +87,11 @@ export default defineContentScript({
                                 display: "inline-flex",
                                 "align-items": "center",
                                 gap: "8px",
-                                padding: "4px 12px",
+                                padding: "2px 12px",
                                 background: "#fb7299",
                                 color: "white",
-                                "border-radius": "20px",
+                                "border-radius": "8px",
                                 "font-size": "12px",
-                                "margin-left": "12px",
                                 "vertical-align": "middle",
                                 "box-shadow": "0 2px 6px rgba(251,114,153,0.3)",
                                 "font-family": "sans-serif",
@@ -187,12 +188,10 @@ export default defineContentScript({
 
         // 监听消息更新
         const handleMessage = (msg: any, sender: any, sendResponse: any) => {
-            if (
-                msg.type === "UPDATE_VIDEO_CONFIG" ||
-                msg.type === "UPDATE_CONFIG"
-            ) {
+            if (msg.type === "UPDATE_CONFIG") {
                 updateConfig(msg.data);
             }
+            if (msg.type === "SET_MODE") setMode(msg.mode);
             if (msg.type === "QUERY_READY_STATUS") {
                 sendResponse({ isCollection: isCollectionPage() });
             }
