@@ -1,5 +1,5 @@
 // entrypoints/popup/App.tsx
-import { onMount, Show, For, createSignal, Switch } from "solid-js";
+import { onMount, Show, For, createSignal, Switch, Match } from "solid-js";
 import { useBiliConfig } from "@/hooks/useBiliConfig";
 import { TimeInput } from "@/components/TimeInput";
 import { HistoryList } from "@/components/HistoryList";
